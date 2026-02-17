@@ -169,18 +169,40 @@ class plt_one_addpt_onclick:
 
     def resize_sq(self, bcid):
         """ resizes the check box """
-        #future reference
-        #print(f"width  : {bcid.rectangles[0].get_width()}")
-        #print(f"height : {bcid.rectangles[0].get_height()}")
-        #print(f"xy     : {bcid.rectangles[0].get_xy()}")
-        #print(f"bb     : {bcid.rectangles[0].get_bbox()}")
-        #print(f"points : {bcid.rectangles[0].get_bbox().get_points()}")  #[[xmin,ymin],[xmax,ymax]]
+        # future reference
+        # Attempt to use the CheckButtons' public attribute if available,
+        # otherwise find the checkbox Rectangle artists on the widget axes.
+        try:
+            rect0 = bcid.rectangles[0]
+        except Exception:
+            import matplotlib.patches as mpatches
+            # collect rectangle artists from the widget axes
+            rects = [ch for ch in bcid.ax.get_children() if isinstance(ch, mpatches.Rectangle)]
+            # exclude the axes background patch (usually larger area)
+            if rects:
+                rects_sorted = sorted(rects, key=lambda r: r.get_width() * r.get_height())
+                rect0 = rects_sorted[0]
+            else:
+                return
 
-        h = bcid.rectangles[0].get_height()
-        bcid.rectangles[0].set_height(3*h)
+        h = rect0.get_height()
+        rect0.set_height(3 * h)
 
-        ymax = bcid.rectangles[0].get_bbox().y1
-        ymin = bcid.rectangles[0].get_bbox().y0
+        bbox = rect0.get_bbox()
+        ymax = bbox.y1
+        ymin = bbox.y0
 
-        bcid.lines[0][0].set_ydata([ymax,ymin])
-        bcid.lines[0][1].set_ydata([ymin,ymax])
+        # adjust the check mark lines if present on the CheckButtons object
+        try:
+            bcid.lines[0][0].set_ydata([ymax, ymin])
+            bcid.lines[0][1].set_ydata([ymin, ymax])
+        except Exception:
+            # fallback: try to find Line2D artists in the widget axes and adjust
+            try:
+                from matplotlib.lines import Line2D
+                lines = [ch for ch in bcid.ax.get_children() if isinstance(ch, Line2D)]
+                if len(lines) >= 2:
+                    lines[0].set_ydata([ymax, ymin])
+                    lines[1].set_ydata([ymin, ymax])
+            except Exception:
+                pass
